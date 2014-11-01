@@ -42,7 +42,7 @@ public class ServerApp {
 		Region euWest1 = Region.getRegion(Regions.EU_WEST_1);
 		sqs.setRegion(euWest1);
 		AmazonS3 s3client = new AmazonS3Client(new ProfileCredentialsProvider());        
-		String bucketName = "success-bucket-2";
+		String bucketName = "g3-bucket-2";
 		
 		// We attemp to receive the request, first of all we check if the outbox queue is already created
 		boolean exists = false;
