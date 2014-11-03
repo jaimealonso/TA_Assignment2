@@ -1,11 +1,16 @@
 package com.santi.jaime.TA;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 
+import javax.imageio.ImageIO;
+
+import org.imgscalr.*;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentials;
@@ -22,6 +27,7 @@ import com.amazonaws.services.sqs.model.CreateQueueRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
 
 public class ServerApp {
 
@@ -45,20 +51,31 @@ public class ServerApp {
 		String bucketName = "g3-bucket-2";
 		
 		// We attemp to receive the request, first of all we check if the outbox queue is already created
-		boolean exists = false;
+		boolean existsIn = false, existsOut = false;
 		String sqsInbox = "";
+		String sqsOutbox = "";
 		for (String queueUrl : sqs.listQueues().getQueueUrls()) {
 			String [] pieces = queueUrl.split("/");
 			if (pieces[pieces.length-1].equals("g3-inbox")) {
-				exists = true;
+				existsIn = true;
 				sqsInbox = queueUrl;
-				System.out.println("Inbox queue found");
-				break;
+				System.out.println("Inbox queue fetched");
+			}
+			else if (pieces[pieces.length-1].equals("g3-outbox")) {
+				existsOut = true;
+				sqsOutbox = queueUrl;
+				System.out.println("Outbox queue fetched");
 			}
 		}
-		if (!exists) {
+		if (!existsIn) {
 			// It doesn't exist so we create it
 			CreateQueueRequest createQueueRequest = new CreateQueueRequest("g3-inbox");
+			sqsInbox = sqs.createQueue(createQueueRequest).getQueueUrl();
+			System.out.println("Queue created, beginning work!");
+		}
+		if (!existsOut) {
+			// It doesn't exist so we create it
+			CreateQueueRequest createQueueRequest = new CreateQueueRequest("g3-outbox");
 			sqsInbox = sqs.createQueue(createQueueRequest).getQueueUrl();
 			System.out.println("Queue created, beginning work!");
 		}
@@ -77,21 +94,21 @@ public class ServerApp {
 			} while (message_number == 0);
 			
 			// As soon as we get the message we delete it so that the other queue doesn't get it
-			String messageRecieptHandle = messages.get(0).getReceiptHandle();
-			sqs.deleteMessage(new DeleteMessageRequest(sqsInbox, messageRecieptHandle));
+			String messageReceiptHandle = messages.get(0).getReceiptHandle();
+			sqs.deleteMessage(new DeleteMessageRequest(sqsInbox, messageReceiptHandle));
 			
 			String fileKey = messages.get(0).getBody();
 			S3Object file = s3client.getObject(bucketName, fileKey);
 			S3ObjectInputStream fileContent = file.getObjectContent();
-			FileOutputStream newFile = new FileOutputStream(fileKey+".jpg");
+			BufferedImage image = ImageIO.read(fileContent);
+			BufferedImage imageTreated = Scalr.apply(image, Scalr.OP_GRAYSCALE);
+			String fileOutputName = new Date().getTime() + fileKey+"_treated";
+			File imageOutputFile = new File(fileOutputName+".jpg");
+			ImageIO.write(imageTreated, "jpg", imageOutputFile);
 			
-		      byte[] buffer = new byte[4096]; 
-		      int bytes_read;
-
-		      while ((bytes_read = fileContent.read(buffer)) != -1)
-		        newFile.write(buffer, 0, bytes_read);
-		      
-		      System.out.println("File written :D");
+			s3client.putObject(bucketName, fileOutputName, imageOutputFile);
+			
+			sqs.sendMessage(new SendMessageRequest(sqsOutbox, fileOutputName));
 			
 		}
 		
