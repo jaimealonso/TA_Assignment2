@@ -10,6 +10,7 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.io.FilenameUtils;
 import org.imgscalr.*;
 
 import com.amazonaws.AmazonClientException;
@@ -102,9 +103,10 @@ public class ServerApp {
 			S3ObjectInputStream fileContent = file.getObjectContent();
 			BufferedImage image = ImageIO.read(fileContent);
 			BufferedImage imageTreated = Scalr.apply(image, Scalr.OP_GRAYSCALE);
-			String fileOutputName = new Date().getTime() + fileKey+"_treated";
-			File imageOutputFile = new File(fileOutputName+".jpg");
-			ImageIO.write(imageTreated, "jpg", imageOutputFile);
+			String fileOutputName = new Date().getTime() + "_treated" + fileKey;
+			File imageOutputFile = new File(fileOutputName);
+			String extension = FilenameUtils.getExtension(fileOutputName);
+			ImageIO.write(imageTreated, extension, imageOutputFile);
 			
 			s3client.putObject(bucketName, fileOutputName, imageOutputFile);
 			

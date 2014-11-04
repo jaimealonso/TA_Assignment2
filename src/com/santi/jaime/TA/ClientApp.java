@@ -2,7 +2,9 @@ package com.santi.jaime.TA;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Scanner;
 
@@ -72,8 +74,10 @@ public class ClientApp {
 		if (!photoFile.exists()) {
 			throw new Exception("Image not found.");
 		}
+		
+		InputStream is = new FileInputStream(photoFile);
 
-		thisOne.putObjectInBucket(input_lowercase, photoFile);
+		thisOne.putObjectInBucket(input_lowercase, is);
 		
 		thisOne.sendMessage(sqsInbox, input_lowercase);
 
@@ -135,13 +139,13 @@ public class ClientApp {
 		return 0;
 	}
 	
-	public int putObjectInBucket(String key, File bucketFile) throws Exception{
+	public int putObjectInBucket(String key, InputStream bucketFile) throws Exception{
 
 		if (!s3client.doesBucketExist(bucketName)) {
 			s3client.createBucket(bucketName, com.amazonaws.services.s3.model.Region.EU_Ireland);
 		}
 
-		s3client.putObject(bucketName, key, bucketFile);
+		s3client.putObject(bucketName, key, bucketFile, null);
 		
 		return 0;
 	}
