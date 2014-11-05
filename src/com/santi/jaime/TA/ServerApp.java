@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -32,11 +34,18 @@ import com.amazonaws.services.sqs.model.SendMessageRequest;
 
 public class ServerApp {
 
+	private static String logPath = "/var/log/success-image-server/";
+	private static SimpleDateFormat date = new SimpleDateFormat("yyyy-MM-dd");
+	private static SimpleDateFormat time = new SimpleDateFormat("HH:mm:ss");
+	
 	public static void main(String[] args) throws Exception {
 		/*
 		 * The ProfileCredentialsProvider will return your [default] credential profile by reading from the credentials file located at (C:\\Users\\Santi\\.aws\\credentials).
 		 */
 		AWSCredentials credentials = null;
+		String logFileName = logPath+date.format(new Date())+"-success.log";
+		File logFile = new File(logFileName);
+		PrintWriter lfpw = new PrintWriter(logFile);
 
 		try {
 			credentials = new ProfileCredentialsProvider("default").getCredentials();
@@ -85,6 +94,9 @@ public class ServerApp {
 			s3client.createBucket(bucketName, com.amazonaws.services.s3.model.Region.EU_Ireland);
 		}
 		
+		lfpw.println(time.format(new Date())+" - Server startup OK.");
+		lfpw.flush();
+		
 		while (true) {
 			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(sqsInbox);
 			int message_number = 0;
@@ -94,6 +106,9 @@ public class ServerApp {
 				message_number = messages.size();
 			} while (message_number == 0);
 			
+			lfpw.println(time.format(new Date())+" - Received message.");
+			lfpw.flush();
+
 			// As soon as we get the message we delete it so that the other queue doesn't get it
 			String messageReceiptHandle = messages.get(0).getReceiptHandle();
 			sqs.deleteMessage(new DeleteMessageRequest(sqsInbox, messageReceiptHandle));
@@ -107,11 +122,13 @@ public class ServerApp {
 			File imageOutputFile = new File(fileOutputName);
 			String extension = FilenameUtils.getExtension(fileOutputName);
 			ImageIO.write(imageTreated, extension, imageOutputFile);
-			
+						
 			s3client.putObject(bucketName, fileOutputName, imageOutputFile);
 			
 			sqs.sendMessage(new SendMessageRequest(sqsOutbox, fileOutputName));
 			
+			lfpw.println(time.format(new Date())+" - Image transformed and uploaded into bucket.");
+			lfpw.flush();
 		}
 		
 		
