@@ -70,26 +70,31 @@ public class ServerApp {
 			if (pieces[pieces.length-1].equals("g3-inbox")) {
 				existsIn = true;
 				sqsInbox = queueUrl;
-				System.out.println("Inbox queue fetched");
+				lfpw.println(time.format(new Date())+" - Inbox queue fetched");
+				lfpw.flush();
 			}
 			else if (pieces[pieces.length-1].equals("g3-outbox")) {
 				existsOut = true;
 				sqsOutbox = queueUrl;
-				System.out.println("Outbox queue fetched");
+				lfpw.println(time.format(new Date())+" - Outbox queue fetched");
+				lfpw.flush();
 			}
 		}
 		if (!existsIn) {
 			// It doesn't exist so we create it
 			CreateQueueRequest createQueueRequest = new CreateQueueRequest("g3-inbox");
 			sqsInbox = sqs.createQueue(createQueueRequest).getQueueUrl();
-			System.out.println("Queue created, beginning work!");
+			lfpw.println(time.format(new Date())+" - Inbox queue created.");
+			lfpw.flush();
 		}
 		if (!existsOut) {
 			// It doesn't exist so we create it
 			CreateQueueRequest createQueueRequest = new CreateQueueRequest("g3-outbox");
 			sqsInbox = sqs.createQueue(createQueueRequest).getQueueUrl();
-			System.out.println("Queue created, beginning work!");
+			lfpw.println(time.format(new Date())+" - Outbox queue created.");
+			lfpw.flush();
 		}
+		
 		
 		if(!s3client.doesBucketExist(bucketName)){
 			s3client.createBucket(bucketName, com.amazonaws.services.s3.model.Region.EU_Ireland);
@@ -112,9 +117,8 @@ public class ServerApp {
 			sqs.deleteMessage(new DeleteMessageRequest(sqsInbox, messageReceiptHandle));
 			
 			MessageAttributeValue sessionID = messages.get(0).getMessageAttributes().get("sessionID");
-			System.out.println("SESSIONID: "+sessionID.getStringValue());
-						
-			lfpw.println(time.format(new Date())+" - Received message.");
+			
+			lfpw.println(time.format(new Date())+" - Received message from "+sessionID.getStringValue()+".");
 			lfpw.flush();
 
 			String fileKey = messages.get(0).getBody();
@@ -131,7 +135,7 @@ public class ServerApp {
 			
 			sqs.sendMessage(new SendMessageRequest(sqsOutbox, fileOutputName).addMessageAttributesEntry("sessionID", sessionID));
 			
-			lfpw.println(time.format(new Date())+" - Image transformed and uploaded into bucket.");
+			lfpw.println(time.format(new Date())+" - "+fileKey+" transformed and uploaded into bucket.");
 			lfpw.flush();
 		}
 		
