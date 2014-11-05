@@ -116,7 +116,7 @@ public class ClientApp {
 		
 	public String receiveMessage(String queue, String sessionID){
 		String body = null;
-		ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queue);
+		ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queue).withMessageAttributeNames("sessionID");
 		List<Message> messages = null;
 		boolean sessionID_found = false;
 		do {

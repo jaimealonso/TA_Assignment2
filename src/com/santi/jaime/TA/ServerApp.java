@@ -99,30 +99,24 @@ public class ServerApp {
 		lfpw.flush();
 		
 		while (true) {
-			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(sqsInbox);
+			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(sqsInbox).withMessageAttributeNames("sessionID");
 			int message_number = 0;
 			List<Message> messages = null;
 			do {
 				messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
 				message_number = messages.size();
 			} while (message_number == 0);
-			
-			//////////////TESTING ZONE/////////////
-			for(String a : messages.get(0).getMessageAttributes().keySet()){
-				System.out.println(a);
-			}
-			MessageAttributeValue sessionID = null;
-			System.out.println("SESSIONID: "+sessionID.getStringValue());
-			/////////////TESTING ZONE///////////////
-			
-			
-			lfpw.println(time.format(new Date())+" - Received message.");
-			lfpw.flush();
-
+						
 			// As soon as we get the message we delete it so that the other queue doesn't get it
 			String messageReceiptHandle = messages.get(0).getReceiptHandle();
 			sqs.deleteMessage(new DeleteMessageRequest(sqsInbox, messageReceiptHandle));
 			
+			MessageAttributeValue sessionID = messages.get(0).getMessageAttributes().get("sessionID");
+			System.out.println("SESSIONID: "+sessionID.getStringValue());
+						
+			lfpw.println(time.format(new Date())+" - Received message.");
+			lfpw.flush();
+
 			String fileKey = messages.get(0).getBody();
 			S3Object file = s3client.getObject(bucketName, fileKey);
 			S3ObjectInputStream fileContent = file.getObjectContent();
