@@ -33,6 +33,7 @@ public class ServletApp extends HttpServlet{
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		
+		String sessionID = req.getSession().getId();
 		PrintWriter pw = resp.getWriter();
 		resp.setContentType("text/html");
 		pw.println("<html>");
@@ -48,12 +49,14 @@ public class ServletApp extends HttpServlet{
 		pw.println("<input type='radio' name='city' value='delft.jpg'>Delft<br/>");
 		pw.println("<input type='radio' name='city' value='pontevedra.jpg'>Pontevedra<br/>");
 		pw.println("<input type='radio' name='city' value='vigo.jpg'>Vigo<br/>");
+		pw.println("<input type='hidden' name='sessionid' value='"+sessionID+"'/>");
 		pw.println("<input type='submit' value='Submit'>");
 		pw.println("</form>");
 		
 		pw.println("<h3>You can also upload a file of your own:</h3>");
 		pw.println("<form enctype='multipart/form-data' action='ServletApp' method='post' name='file'>");
 		pw.println("<input type='file' name='image'/><br/>");
+		pw.println("<input type='hidden' name='sessionid' value='"+sessionID+"'/>");
 		pw.println("<input type='submit' value='Submit'>");
 		pw.println("</form>");
 		
@@ -64,6 +67,8 @@ public class ServletApp extends HttpServlet{
 	
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		
+		String sessionID = req.getSession().getId();
 		
 		PrintWriter pw = resp.getWriter();
 		resp.setContentType("text/html");
@@ -122,9 +127,9 @@ public class ServletApp extends HttpServlet{
 			e.printStackTrace();
 		}
 		
-		clientApp.sendMessage(urlInbox, key);
+		clientApp.sendMessage(urlInbox, key, sessionID);
 
-		String responseKey = clientApp.receiveMessage(urlOutbox);
+		String responseKey = clientApp.receiveMessage(urlOutbox, sessionID);
 		S3ObjectInputStream fileContent = null;
 		try {
 			fileContent = clientApp.getObjectFromBucket(responseKey);

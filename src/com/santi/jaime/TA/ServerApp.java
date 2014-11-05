@@ -29,6 +29,7 @@ import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.CreateQueueRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
+import com.amazonaws.services.sqs.model.MessageAttributeValue;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
 
@@ -106,6 +107,15 @@ public class ServerApp {
 				message_number = messages.size();
 			} while (message_number == 0);
 			
+			//////////////TESTING ZONE/////////////
+			for(String a : messages.get(0).getMessageAttributes().keySet()){
+				System.out.println(a);
+			}
+			MessageAttributeValue sessionID = null;
+			System.out.println("SESSIONID: "+sessionID.getStringValue());
+			/////////////TESTING ZONE///////////////
+			
+			
 			lfpw.println(time.format(new Date())+" - Received message.");
 			lfpw.flush();
 
@@ -125,7 +135,7 @@ public class ServerApp {
 						
 			s3client.putObject(bucketName, fileOutputName, imageOutputFile);
 			
-			sqs.sendMessage(new SendMessageRequest(sqsOutbox, fileOutputName));
+			sqs.sendMessage(new SendMessageRequest(sqsOutbox, fileOutputName).addMessageAttributesEntry("sessionID", sessionID));
 			
 			lfpw.println(time.format(new Date())+" - Image transformed and uploaded into bucket.");
 			lfpw.flush();

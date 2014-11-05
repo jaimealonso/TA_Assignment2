@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
@@ -24,6 +25,7 @@ import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.model.CreateQueueRequest;
 import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
+import com.amazonaws.services.sqs.model.MessageAttributeValue;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
 import com.amazonaws.services.sqs.model.SendMessageResult;
@@ -57,6 +59,7 @@ public class ClientApp {
 	
 	public static void main(String[] args) throws Exception {
 		
+		String sessionID = String.valueOf(new Date().getTime());
 		ClientApp thisOne = new ClientApp();
 
 		String sqsInbox = thisOne.getQueueUrl("g3-inbox");
@@ -79,9 +82,9 @@ public class ClientApp {
 
 		thisOne.putObjectInBucket(input_lowercase, is);
 		
-		thisOne.sendMessage(sqsInbox, input_lowercase);
+		thisOne.sendMessage(sqsInbox, input_lowercase, sessionID);
 
-		String fileKey = thisOne.receiveMessage(sqsOutbox);
+		String fileKey = thisOne.receiveMessage(sqsOutbox, sessionID);
 		S3ObjectInputStream fileContent = thisOne.getObjectFromBucket(fileKey);
 		BufferedImage imageFetched = ImageIO.read(fileContent);
 		File outPutImage = new File(fileKey + ".jpg");
@@ -110,30 +113,37 @@ public class ClientApp {
 
 		return queue;
 	}
-	
-	
-	public String receiveMessage(String queue){
+		
+	public String receiveMessage(String queue, String sessionID){
 		String body = null;
 		ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queue);
-		int message_number = 0;
 		List<Message> messages = null;
+		boolean sessionID_found = false;
 		do {
 			messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
-			message_number = messages.size();
-		} while (message_number == 0);
+			if(messages.size() > 0){
+				for(Message m : messages){
+					String sessionIDAttribute = m.getMessageAttributes().get("sessionID").getStringValue();
+					if(sessionID_found = sessionID.equals(sessionIDAttribute)){
+						String messageRecieptHandle = messages.get(0).getReceiptHandle();
+						sqs.deleteMessage(new DeleteMessageRequest(queue, messageRecieptHandle));
 
-		// As soon as we get the message we delete it so that the other queue doesn't get it
-		String messageRecieptHandle = messages.get(0).getReceiptHandle();
-		sqs.deleteMessage(new DeleteMessageRequest(queue, messageRecieptHandle));
+						body = messages.get(0).getBody();
+						return body;
+					}
+				}
+			}
+		} while (!sessionID_found);
 		
-		body = messages.get(0).getBody();
-		
-		return body;
-		
+		//It will never get to this point; we should refactor this in some way...
+		return null;
 	}
 	
-	public int sendMessage(String queueUrl, String body){
-		SendMessageRequest message_out = new SendMessageRequest(queueUrl, body);
+	public int sendMessage(String queueUrl, String body, String sessionID){
+		MessageAttributeValue sessionIDAttribute = new MessageAttributeValue();
+		sessionIDAttribute.setStringValue(sessionID);
+		sessionIDAttribute.setDataType("String");
+		SendMessageRequest message_out = new SendMessageRequest(queueUrl, body).addMessageAttributesEntry("sessionID", sessionIDAttribute);
 		sqs.sendMessage(message_out);
 		
 		return 0;
