@@ -32,16 +32,14 @@ import com.amazonaws.services.sqs.model.SendMessageResult;
 
 public class ClientApp {
 
-	private AWSCredentials credentials;
-	private AmazonSQS sqs;
-	private Region usWest2;
-	private AmazonS3 s3client;
-	private String bucketName;
-	
-	public ClientApp(){
-		/*
-		 * The ProfileCredentialsProvider will return your [default] credential profile by reading from the credentials file located at (C:\\Users\\Santi\\.aws\\credentials).
-		 */
+	private AWSCredentials	credentials;
+	private AmazonSQS		sqs;
+	private Region			usWest2;
+	private AmazonS3		s3client;
+	private static final String	bucketName	= "g3-bucket-2";
+
+	public ClientApp() {
+
 		credentials = null;
 
 		try {
@@ -54,35 +52,38 @@ public class ClientApp {
 		usWest2 = Region.getRegion(Regions.EU_WEST_1);
 		sqs.setRegion(usWest2);
 		s3client = new AmazonS3Client(new ProfileCredentialsProvider());
-		bucketName = "g3-bucket-2";
 	}
-	
+
 	public static void main(String[] args) throws Exception {
-		
+
 		String sessionID = String.valueOf(new Date().getTime());
 		ClientApp thisOne = new ClientApp();
 
 		String sqsInbox = thisOne.getQueueUrl("g3-inbox");
-		String sqsOutbox = thisOne.getQueueUrl("g3-outbox");;
+		String sqsOutbox = thisOne.getQueueUrl("g3-outbox");
+		;
 
 		String input = "";
+		String input2 = "";
 
 		// We ask for user input
 		Scanner sc = new Scanner(System.in);
 		System.out.println("Please choose an image (Cracovia, Delft, Pontevedra, Vigo): ");
 		input = sc.nextLine();
+		System.out.println("Please choose the action you want to perform (brighter, darker, black_white): ");
+		input2 = sc.nextLine();
 		sc.close();
 		String input_lowercase = input.toLowerCase();
+		String input_lowercase2 = input2.toLowerCase();
 		File photoFile = new File("images/" + input_lowercase + ".jpg");
 		if (!photoFile.exists()) {
 			throw new Exception("Image not found.");
 		}
-		
+
 		InputStream is = new FileInputStream(photoFile);
 
 		thisOne.putObjectInBucket(input_lowercase, is);
-		
-		thisOne.sendMessage(sqsInbox, input_lowercase, sessionID, "brighter");
+		thisOne.sendMessage(sqsInbox, input_lowercase, sessionID, input_lowercase2);
 
 		String fileKey = thisOne.receiveMessage(sqsOutbox, sessionID);
 		S3ObjectInputStream fileContent = thisOne.getObjectFromBucket(fileKey);
@@ -91,20 +92,20 @@ public class ClientApp {
 		ImageIO.write(imageFetched, "jpg", outPutImage);
 		System.out.println("All jobs finished");
 	}
-	
+
 	public void deleteObjectFromBucket(String key) {
 		s3client.deleteObject(bucketName, key);
 	}
-	
-	public String getQueueUrl(String queueName){
+
+	public String getQueueUrl(String queueName) {
 		boolean exists = false;
 		String queue = "";
 		for (String queueUrl : sqs.listQueues().getQueueUrls()) {
-			String [] pieces = queueUrl.split("/");
-			if (pieces[pieces.length-1].equals(queueName)) {
+			String[] pieces = queueUrl.split("/");
+			if (pieces[pieces.length - 1].equals(queueName)) {
 				exists = true;
 				queue = queueUrl;
-				System.out.println(queueName+" queue found");
+				System.out.println(queueName + " queue found");
 				break;
 			}
 		}
@@ -117,18 +118,18 @@ public class ClientApp {
 
 		return queue;
 	}
-		
-	public String receiveMessage(String queue, String sessionID){
+
+	public String receiveMessage(String queue, String sessionID) {
 		String body = null;
 		ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queue).withMessageAttributeNames("sessionID");
 		List<Message> messages = null;
 		boolean sessionID_found = false;
 		do {
 			messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
-			if(messages.size() > 0){
-				for(Message m : messages){
+			if (messages.size() > 0) {
+				for (Message m : messages) {
 					String sessionIDAttribute = m.getMessageAttributes().get("sessionID").getStringValue();
-					if(sessionID_found = sessionID.equals(sessionIDAttribute)){
+					if (sessionID_found = sessionID.equals(sessionIDAttribute)) {
 						String messageRecieptHandle = messages.get(0).getReceiptHandle();
 						sqs.deleteMessage(new DeleteMessageRequest(queue, messageRecieptHandle));
 
@@ -138,12 +139,12 @@ public class ClientApp {
 				}
 			}
 		} while (!sessionID_found);
-		
-		//It will never get to this point; we should refactor this in some way...
+
+		// It will never get to this point; we should refactor this in some way...
 		return null;
 	}
-	
-	public int sendMessage(String queueUrl, String body, String sessionID, String action){
+
+	public int sendMessage(String queueUrl, String body, String sessionID, String action) {
 		MessageAttributeValue sessionIDAttribute = new MessageAttributeValue();
 		MessageAttributeValue actionAttribute = new MessageAttributeValue();
 
@@ -151,28 +152,28 @@ public class ClientApp {
 		sessionIDAttribute.setDataType("String");
 		actionAttribute.setStringValue(action);
 		actionAttribute.setDataType("String");
-		
+
 		SendMessageRequest message_out = new SendMessageRequest(queueUrl, body).addMessageAttributesEntry("sessionID", sessionIDAttribute).addMessageAttributesEntry("action", actionAttribute);
 		sqs.sendMessage(message_out);
-		
+
 		return 0;
 	}
-	
-	public int putObjectInBucket(String key, InputStream bucketFile) throws Exception{
+
+	public int putObjectInBucket(String key, InputStream bucketFile) throws Exception {
 
 		if (!s3client.doesBucketExist(bucketName)) {
 			s3client.createBucket(bucketName, com.amazonaws.services.s3.model.Region.EU_Ireland);
 		}
 
 		s3client.putObject(bucketName, key, bucketFile, null);
-		
+
 		return 0;
 	}
-	
-	public S3ObjectInputStream getObjectFromBucket(String keyObject) throws Exception{
+
+	public S3ObjectInputStream getObjectFromBucket(String keyObject) throws Exception {
 		S3Object file = s3client.getObject(bucketName, keyObject);
 		S3ObjectInputStream fileContent = file.getObjectContent();
-		
+
 		return fileContent;
 	}
 

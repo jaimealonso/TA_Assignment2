@@ -15,9 +15,9 @@ public class ServletAppMassive extends HttpServlet{
 
 	
 	private static final long	serialVersionUID	= 1L;
-	private final String inboxURL = "g3-inbox";
-	private final String outboxURL = "g3-outbox";
-	private static String dummyRequest = "vigo.jpg";
+	private static final String inboxURL = "g3-inbox";
+	private static final String outboxURL = "g3-outbox";
+	private static final String dummyRequest = "vigo.jpg"; //We use vigo to do the test
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -29,7 +29,7 @@ public class ServletAppMassive extends HttpServlet{
 		pw.println("<title>TA Assignment 2 Servlet Service</title>");
 		pw.println("</head><body bgcolor=\"yellow\">");
 		pw.println("<h1>Welcome to the MASSIVE Assignment 2 Servlet!</h1><br /><br />");
-		pw.println("<h3>Please enter the number of requests:</h3>");
+		pw.println("<h3>Please enter the number of requests you want to perform:</h3>");
 		
 		pw.println("<form action='ServletAppMassive' method='post' name='requests'>");
 		pw.println("<input type='text' name='number'><br/>");
@@ -57,7 +57,6 @@ public class ServletAppMassive extends HttpServlet{
 			try {
 				throw new Exception("Image not found.");
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -68,7 +67,6 @@ public class ServletAppMassive extends HttpServlet{
 		try {
 			clientApp.putObjectInBucket(dummyRequest, photoFile);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -92,7 +90,7 @@ public class ServletAppMassive extends HttpServlet{
 		pw.println("<title>TA Assignment 2 Servlet Service</title>");
 		pw.println("</head><body bgcolor=\"yellow\">");
 		pw.println("<h3>All done! Now, check Amazon CloudWatch Alarms to check if everything went OK.</h3><br /><br />");
-		pw.println("<h3>Time elapsed: +"+minutes +"m "+"and "+seconds+"s</h3><br /><br />");
+		pw.println("<h3>Time elapsed: "+minutes +"m "+"and "+seconds+"s</h3><br /><br />");
 		pw.println("</body></html>");
 	
 	}	
