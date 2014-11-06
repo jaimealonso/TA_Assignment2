@@ -50,6 +50,10 @@ public class ServletApp extends HttpServlet{
 		pw.println("<input type='radio' name='city' value='pontevedra.jpg'>Pontevedra<br/>");
 		pw.println("<input type='radio' name='city' value='vigo.jpg'>Vigo<br/>");
 		pw.println("<input type='hidden' name='sessionid' value='"+sessionID+"'/>");
+		pw.println("<h3>Please choose the transformation you want to perform:</h3>");
+		pw.println("<input type='radio' name='action' value='brighter'>Brighter<br/>");
+		pw.println("<input type='radio' name='action' value='darker'>Darker<br/>");
+		pw.println("<input type='radio' name='action' value='black_white'>Black & White<br/>");
 		pw.println("<input type='submit' value='Submit'>");
 		pw.println("</form>");
 		
@@ -57,6 +61,12 @@ public class ServletApp extends HttpServlet{
 		pw.println("<form enctype='multipart/form-data' action='ServletApp' method='post' name='file'>");
 		pw.println("<input type='file' name='image'/><br/>");
 		pw.println("<input type='hidden' name='sessionid' value='"+sessionID+"'/>");
+		
+		pw.println("<h3>Please choose the transformation you want to perform:</h3>");
+		pw.println("<input type='radio' name='action' value='brighter'>Brighter<br/>");
+		pw.println("<input type='radio' name='action' value='darker'>Darker<br/>");
+		pw.println("<input type='radio' name='action' value='black_white'>Black & White<br/>");
+
 		pw.println("<input type='submit' value='Submit'>");
 		pw.println("</form>");
 		
@@ -69,7 +79,7 @@ public class ServletApp extends HttpServlet{
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		
 		String sessionID = req.getSession().getId();
-		
+
 		PrintWriter pw = resp.getWriter();
 		resp.setContentType("text/html");
 		pw.println("<html>");
@@ -79,6 +89,7 @@ public class ServletApp extends HttpServlet{
 		pw.println("<h1>Welcome to our Assignment 2 Servlet!</h1><br /><br />");
 		
 		String key = null;
+		String action = null;
 		InputStream photoFile = null;
 		
         try {
@@ -100,7 +111,9 @@ public class ServletApp extends HttpServlet{
 						
 						photoFile = new FileInputStream(file);
 					}
-					break;
+					else if("action".equals(item.getFieldName())){
+						action = item.getString();
+					}
 				}
 				else{
 					key = FilenameUtils.getName(item.getName());
@@ -127,7 +140,7 @@ public class ServletApp extends HttpServlet{
 			e.printStackTrace();
 		}
 		
-		clientApp.sendMessage(urlInbox, key, sessionID);
+		clientApp.sendMessage(urlInbox, key, sessionID, action);
 
 		String responseKey = clientApp.receiveMessage(urlOutbox, sessionID);
 		S3ObjectInputStream fileContent = null;

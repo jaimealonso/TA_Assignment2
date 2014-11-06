@@ -82,7 +82,7 @@ public class ClientApp {
 
 		thisOne.putObjectInBucket(input_lowercase, is);
 		
-		thisOne.sendMessage(sqsInbox, input_lowercase, sessionID);
+		thisOne.sendMessage(sqsInbox, input_lowercase, sessionID, "brighter");
 
 		String fileKey = thisOne.receiveMessage(sqsOutbox, sessionID);
 		S3ObjectInputStream fileContent = thisOne.getObjectFromBucket(fileKey);
@@ -90,6 +90,10 @@ public class ClientApp {
 		File outPutImage = new File(fileKey + ".jpg");
 		ImageIO.write(imageFetched, "jpg", outPutImage);
 		System.out.println("All jobs finished");
+	}
+	
+	public void deleteObjectFromBucket(String key) {
+		s3client.deleteObject(bucketName, key);
 	}
 	
 	public String getQueueUrl(String queueName){
@@ -139,11 +143,16 @@ public class ClientApp {
 		return null;
 	}
 	
-	public int sendMessage(String queueUrl, String body, String sessionID){
+	public int sendMessage(String queueUrl, String body, String sessionID, String action){
 		MessageAttributeValue sessionIDAttribute = new MessageAttributeValue();
+		MessageAttributeValue actionAttribute = new MessageAttributeValue();
+
 		sessionIDAttribute.setStringValue(sessionID);
 		sessionIDAttribute.setDataType("String");
-		SendMessageRequest message_out = new SendMessageRequest(queueUrl, body).addMessageAttributesEntry("sessionID", sessionIDAttribute);
+		actionAttribute.setStringValue(action);
+		actionAttribute.setDataType("String");
+		
+		SendMessageRequest message_out = new SendMessageRequest(queueUrl, body).addMessageAttributesEntry("sessionID", sessionIDAttribute).addMessageAttributesEntry("action", actionAttribute);
 		sqs.sendMessage(message_out);
 		
 		return 0;

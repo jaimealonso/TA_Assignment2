@@ -60,7 +60,6 @@ public class ServerApp {
 		sqs.setRegion(euWest1);
 		AmazonS3 s3client = new AmazonS3Client(new ProfileCredentialsProvider());        
 		String bucketName = "g3-bucket-2";
-		
 		// We attemp to receive the request, first of all we check if the outbox queue is already created
 		boolean existsIn = false, existsOut = false;
 		String sqsInbox = "";
@@ -104,7 +103,7 @@ public class ServerApp {
 		lfpw.flush();
 		
 		while (true) {
-			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(sqsInbox).withMessageAttributeNames("sessionID");
+			ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(sqsInbox).withMessageAttributeNames("sessionID").withMessageAttributeNames("action");
 			int message_number = 0;
 			List<Message> messages = null;
 			do {
@@ -117,6 +116,8 @@ public class ServerApp {
 			sqs.deleteMessage(new DeleteMessageRequest(sqsInbox, messageReceiptHandle));
 			
 			MessageAttributeValue sessionID = messages.get(0).getMessageAttributes().get("sessionID");
+			MessageAttributeValue action = messages.get(0).getMessageAttributes().get("action");
+			String actionValue = action.getStringValue();
 			
 			lfpw.println(time.format(new Date())+" - Received message from "+sessionID.getStringValue()+".");
 			lfpw.flush();
@@ -125,7 +126,20 @@ public class ServerApp {
 			S3Object file = s3client.getObject(bucketName, fileKey);
 			S3ObjectInputStream fileContent = file.getObjectContent();
 			BufferedImage image = ImageIO.read(fileContent);
-			BufferedImage imageTreated = Scalr.apply(image, Scalr.OP_GRAYSCALE);
+			BufferedImage imageTreated = null;
+			
+			switch(actionValue) {
+				case "brighter":
+					imageTreated = Scalr.apply(image, Scalr.OP_BRIGHTER);
+					break;
+				case "darker":
+					imageTreated = Scalr.apply(image, Scalr.OP_DARKER);
+					break;
+				case "black_white":
+					imageTreated = Scalr.apply(image, Scalr.OP_GRAYSCALE);
+					break;
+			}
+			
 			String fileOutputName = new Date().getTime() + "_treated" + fileKey;
 			File imageOutputFile = new File(fileOutputName);
 			String extension = FilenameUtils.getExtension(fileOutputName);

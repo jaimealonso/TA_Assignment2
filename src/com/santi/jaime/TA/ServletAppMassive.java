@@ -43,6 +43,8 @@ public class ServletAppMassive extends HttpServlet{
 	
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		
+		long startTime = System.currentTimeMillis();
 		String sessionID = req.getSession().getId();
 		Integer number = Integer.parseInt(req.getParameter("number"));
 		
@@ -71,14 +73,18 @@ public class ServletAppMassive extends HttpServlet{
 		}
 		
 		for(int i = 0; i < number; i++){
-			clientApp.sendMessage(urlInbox, dummyRequest, sessionID);
+			clientApp.sendMessage(urlInbox, dummyRequest, sessionID, "brighter");
 		}
 		
 		//CLEANING UP
 		for(int i = 0; i < number; i++){
-			clientApp.receiveMessage(urlOutbox, sessionID);
+			String key = clientApp.receiveMessage(urlOutbox, sessionID);
+			clientApp.deleteObjectFromBucket(key);
 		}
-		
+		long finishTime = System.currentTimeMillis();
+		long milliseconds = (finishTime - startTime);
+		int seconds = (int) (milliseconds / 1000) % 60 ;
+		int minutes = (int) ((milliseconds / (1000*60)) % 60);
 		PrintWriter pw = resp.getWriter();
 		resp.setContentType("text/html");
 		pw.println("<html>");
@@ -86,6 +92,7 @@ public class ServletAppMassive extends HttpServlet{
 		pw.println("<title>TA Assignment 2 Servlet Service</title>");
 		pw.println("</head><body bgcolor=\"yellow\">");
 		pw.println("<h3>All done! Now, check Amazon CloudWatch Alarms to check if everything went OK.</h3><br /><br />");
+		pw.println("<h3>Time elapsed: +"+minutes +"m "+"and "+seconds+"s</h3><br /><br />");
 		pw.println("</body></html>");
 	
 	}	
